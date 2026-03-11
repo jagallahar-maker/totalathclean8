@@ -1,0 +1,27 @@
+Theme Fix Instructions for log_exercise_screen.dart:
+
+1. Best Set Ever card (lines 1347-1454):
+   - Change padding from AppSpacing.paddingMd to EdgeInsets.all(10)
+   - Change margin from EdgeInsets.only(bottom: 12) to EdgeInsets.only(bottom: 8)
+   - Replace all AppColors.darkPrimary/lightPrimary with context.colors.primaryAccent
+   - Change icon size from 18 to 16
+   - Change titleSmall to bodyMedium for title
+   - Change height 12 spacing to 8
+   - Change padding from 12 to 8 in inner container
+   - Change height 40 to 32 for divider
+   - Change titleLarge to titleMedium for numbers
+
+2. Next Session card (lines 1456-1580):
+   - Change padding from AppSpacing.paddingMd to EdgeInsets.all(10)
+   - Change margin from EdgeInsets.only(bottom: 12) to EdgeInsets.only(bottom: 8)
+   - Replace success/accent colors with context.colors.primaryAccent for UI elements
+   - Keep semantic green for increases only
+   - Change icon size from 18 to 16
+   - Change titleSmall to bodyMedium for title
+   - Change height 12 spacing to 8
+   - Change padding from 12 to 8 in inner container
+
+3. View Full Progress button (lines 1308-1342):
+   - Replace AppColors.darkPrimary/lightPrimary with context.colors.primaryAccent
+   - Change padding from (vertical: 12) to (vertical: 8)
+   - Change margin from (bottom: 16) to (bottom: 8)
