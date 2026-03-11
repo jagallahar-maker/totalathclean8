@@ -1,0 +1,82 @@
+# Uncomment this line to define a global platform for your project
+platform :ios, '13.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+def flutter_ios_podfile_setup
+  # This function is called from the Podfile to set up Flutter iOS dependencies
+end
+
+def flutter_install_all_ios_pods(ios_application_path)
+  # Install Flutter engine pod
+  flutter_application_path = File.expand_path('..', ios_application_path)
+  
+  # Parse the plugin registrant and install plugin pods
+  symlink_dir = File.expand_path('.symlinks', ios_application_path)
+  
+  if File.exist?(File.join(symlink_dir, 'plugins'))
+    Dir.glob(File.join(symlink_dir, 'plugins', '*', 'ios')) do |plugin_dir|
+      plugin_name = File.basename(File.dirname(plugin_dir))
+      podspec = File.join(plugin_dir, "#{plugin_name}.podspec")
+      if File.exist?(podspec)
+        pod plugin_name, :path => File.join('.symlinks', 'plugins', plugin_name, 'ios')
+      end
+    end
+  end
+  
+  # Install Flutter.framework from Flutter SDK
+  pod 'Flutter', :path => File.join(flutter_root, 'packages/flutter')
+end
+
+def flutter_additional_ios_build_settings(target)
+  return unless target.platform_name == :ios
+  
+  # This function applies Flutter-specific build settings
+  target.build_configurations.each do |build_configuration|
+    build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+    build_configuration.build_settings['ENABLE_BITCODE'] = 'NO'
+    
+    # Avoid type-checking issues
+    build_configuration.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+    
+    # Conditionally modify other settings
+    if build_configuration.name == 'Release'
+      build_configuration.build_settings['SWIFT_OPTIMIZATION_LEVEL'] = '-Onone'
+    end
+  end
+end
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+  use_modular_headers!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+end
