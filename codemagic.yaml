@@ -1,0 +1,152 @@
+workflows:
+  ios-workflow:
+    name: iOS Workflow
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    working_directory: .
+    integrations:
+      app_store_connect: codemagic
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.justingallahar.totalathlete
+      vars:
+        BUNDLE_ID: "com.justingallahar.totalathlete"
+        XCODE_WORKSPACE: "Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Set up debug log
+        script: |
+          set -e
+          set -x
+          echo "Build directory: $CM_BUILD_DIR"
+          echo "Flutter version:"
+          flutter --version
+          echo "Xcode version:"
+          xcodebuild -version
+      - name: Get Flutter packages
+        script: |
+          set -e
+          set -x
+          cd $CM_BUILD_DIR
+          flutter pub get
+      - name: Verify Generated.xcconfig exists
+        script: |
+          set -e
+          set -x
+          cd $CM_BUILD_DIR
+          if [ ! -f "ios/Flutter/Generated.xcconfig" ]; then
+            echo "ERROR: Generated.xcconfig not found after flutter pub get"
+            ls -la ios/Flutter/
+            exit 1
+          fi
+          echo "Generated.xcconfig exists:"
+          cat ios/Flutter/Generated.xcconfig
+      - name: Install CocoaPods dependencies
+        script: |
+          set -e
+          set -x
+          cd $CM_BUILD_DIR/ios
+          pod install
+      - name: Set up code signing settings on Xcode project
+        script: |
+          set -e
+          set -x
+          cd $CM_BUILD_DIR
+          xcode-project use-profiles
+      - name: Flutter analyze
+        script: |
+          set -x
+          cd $CM_BUILD_DIR
+          flutter analyze || true
+      - name: Flutter build ipa
+        script: |
+          set -e
+          set -x
+          cd $CM_BUILD_DIR
+          flutter build ipa --release \
+            -t lib/main.dart \
+            --build-name=1.0.0 \
+            --build-number=$(($(app-store-connect get-latest-testflight-build-number "$APP_STORE_ID") + 1)) \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - justin@example.com
+        notify:
+          success: true
+          failure: true
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        beta_groups:
+          - Internal Testers
+        submit_to_app_store: false
+
+  android-workflow:
+    name: Android Workflow
+    max_build_duration: 120
+    instance_type: mac_mini_m1
+    working_directory: .
+    environment:
+      android_signing:
+        - keystore_reference
+      groups:
+        - google_play
+      vars:
+        PACKAGE_NAME: "com.justingallahar.totalathlete"
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Set up local.properties
+        script: |
+          set -e
+          set -x
+          echo "flutter.sdk=$HOME/programs/flutter" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Get Flutter packages
+        script: |
+          set -e
+          set -x
+          cd $CM_BUILD_DIR
+          flutter pub get
+      - name: Flutter analyze
+        script: |
+          set -x
+          cd $CM_BUILD_DIR
+          flutter analyze || true
+      - name: Build APK with Flutter
+        script: |
+          set -e
+          set -x
+          cd $CM_BUILD_DIR
+          flutter build apk --release -t lib/main.dart
+      - name: Build AAB with Flutter
+        script: |
+          set -e
+          set -x
+          cd $CM_BUILD_DIR
+          flutter build appbundle --release -t lib/main.dart
+    artifacts:
+      - build/app/outputs/**/*.apk
+      - build/app/outputs/**/*.aab
+      - build/app/outputs/**/mapping.txt
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - justin@example.com
+        notify:
+          success: true
+          failure: false
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true
